@@ -1,0 +1,32 @@
+# Runs bronze_prodman_etl automatically whenever a new file lands in Internal Drop under
+# Product Management's own top-level folder. Single-task job, not folded into a bigger
+# job, because Tier 1 pipelines are independent per source (see
+# bronze_prodman_etl.pipeline.yml).
+#
+# Prefixed trigger_ (not bronze_) for the same reason refresh_ jobs are prefixed: the
+# Databricks Jobs list is flat, no folders, so the prefix is what groups all trigger jobs
+# together at a glance - and distinguishes this file-arrival-triggered job from the
+# bronze_prodman_etl PIPELINE it runs (same base name, different resource type/namespace).
+#
+# No pause_status set here on purpose - trigger pause state is controlled by the deploying
+# target's presets.trigger_pause_status in databricks.yml, not per-resource (see
+# CONVENTIONS.md's Job naming section). A hardcoded pause_status here would override and
+# defeat that target-level dev-safety default.
+#
+# Downstream: this only refreshes Bronze. See
+# trigger_silver_gold/trigger_silver_gold_products.job.yml for how Silver/Gold pick up the
+# change automatically via their own table_update trigger.
+
+resources:
+  jobs:
+    trigger_bronze_prodman_etl:
+      name: trigger_bronze_prodman_etl_${bundle.target}
+
+      trigger:
+        file_arrival:
+          url: "/Volumes/${var.catalog}/drop/internal_drop/prodman/product_pricing/"
+
+      tasks:
+        - task_key: run_bronze_prodman_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bronze_prodman_etl.id}

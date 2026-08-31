@@ -1,0 +1,37 @@
+# Tier 1 (source-ingestion) pipeline for Finance: Internal Drop -> Bronze only. See
+# CONVENTIONS.md for the project's schema-allocation rules and README.md for the target
+# architecture, the Tier 1/Tier 2 pipeline-grouping principle, and why pipelines are also
+# prefixed by layer (bronze_/silver_/gold_) - the Databricks Pipelines list is flat, no
+# folders, so the prefix is the only way to group by layer at a glance.
+#
+# Tier 1 = grouped by WHO DELIVERS the data (one pipeline per source system - Finance's
+# customer credit score is a different system than the CRM, even though both attach to
+# the same customer entity downstream). Tier 2's silver_customers_etl/gold_shared_customers_etl
+# own the conformed Silver/Gold customer representation, reading this pipeline's Bronze
+# table cross-pipeline (joined there with bronze_crm_etl's customer data) - this pipeline
+# has no knowledge of who reads it.
+#
+# schema: bronze below is this pipeline's own default, since Bronze is all it produces.
+
+resources:
+  pipelines:
+    bronze_finance_etl:
+      # Suffixed with the target name so dev/prod pipelines are distinguishable in the
+      # workspace UI - both would otherwise deploy as the identical "bronze_finance_etl".
+      name: bronze_finance_etl_${bundle.target}
+      catalog: ${var.catalog}
+      schema: bronze
+      serverless: true
+      continuous: false
+      root_path: "../../../src/pipelines/bronze/bronze_finance_etl"
+
+      configuration:
+        bundle.catalog: ${var.catalog}
+
+      libraries:
+        - glob:
+            include: ../../../src/pipelines/bronze/bronze_finance_etl/transformations/**
+
+      environment:
+        dependencies:
+          - --editable ${workspace.file_path}

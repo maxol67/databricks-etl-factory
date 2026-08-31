@@ -1,0 +1,8 @@
+# Enforces Ruff linting + formatting (see pyproject.toml for line-length) on every commit.
+# One-time setup after cloning: pip install -e . --group dev && pre-commit install
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.5
+    hooks:
+      - id: ruff-check
+      - id: ruff-format

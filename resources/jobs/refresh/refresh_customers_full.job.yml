@@ -1,0 +1,48 @@
+# Orchestrates a full, on-demand refresh of the customers business domain, THREE stages, not
+# two: the two Tier 1 sources (bronze_crm_etl, bronze_finance_etl) must both complete
+# before Tier 2's silver_customers_etl runs (it joins their Bronze tables cross-pipeline),
+# and silver_customers_etl must itself complete before gold_shared_customers_etl runs (it reads
+# silver_customers.customers cross-pipeline). Silver and Gold used to be one pipeline
+# (customers_etl) with that ordering guaranteed internally by Lakeflow's own DAG - now
+# split by layer (see silver_customers_etl.pipeline.yml's comment for the tradeoff), this
+# job is what re-establishes that ordering. Use this job, not the four pipelines
+# individually, for a full customers-domain refresh (dev testing, backfills, recovery).
+#
+# Prefixed refresh_ (not <domain>_refresh) for the same reason pipelines are prefixed by
+# layer: the Databricks Jobs list is flat, no folders, so the prefix is what groups all
+# refresh jobs together at a glance.
+#
+# Suffixed _full to distinguish it from
+# ../trigger_silver_gold/trigger_silver_gold_customers.job.yml, which table_update-triggers
+# only the Silver->Gold stages automatically whenever Bronze changes - this job is the
+# manual, always-runs-everything counterpart, kept for full reloads that
+# trigger_silver_gold_customers deliberately doesn't do on its own. On-demand only (no
+# schedule/trigger) - run via `databricks bundle run refresh_customers_full -t <target>
+# --profile <profile>`.
+
+resources:
+  jobs:
+    refresh_customers_full:
+      name: refresh_customers_full_${bundle.target}
+
+      tasks:
+        - task_key: run_bronze_crm_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bronze_crm_etl.id}
+
+        - task_key: run_bronze_finance_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bronze_finance_etl.id}
+
+        - task_key: run_silver_customers_etl
+          depends_on:
+            - task_key: run_bronze_crm_etl
+            - task_key: run_bronze_finance_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_customers_etl.id}
+
+        - task_key: run_gold_shared_customers_etl
+          depends_on:
+            - task_key: run_silver_customers_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_shared_customers_etl.id}

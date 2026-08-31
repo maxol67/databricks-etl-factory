@@ -1,0 +1,49 @@
+# Tier 2 (business-domain) pipeline for Customers: Silver (cross-pipeline) -> Gold only.
+# See CONVENTIONS.md for the project's schema-allocation rules and README.md for the target
+# architecture, the Tier 1/Tier 2 pipeline-grouping principle, and why pipelines are also
+# prefixed by layer (bronze_/silver_/gold_) - the Databricks Pipelines list is flat, no
+# folders, so the prefix is the only way to group by layer at a glance.
+#
+# Named gold_shared_customers_etl, not gold_customers_etl: every other pipeline's name
+# suffix matches its actual schema exactly (silver_sales_etl -> silver_sales,
+# silver_customers_etl -> silver_customers) - this one and gold_shared_products_etl are
+# the only Gold pipelines writing to the shared gold_shared schema instead of a
+# domain-specific one (see CONVENTIONS.md's Schema allocation rule for why gold_shared is
+# the deliberate exception to Gold's per-domain split). The name says so now too, instead
+# of only the schema: field below - same flat-list-needs-the-prefix reasoning as the
+# layer prefix itself, one level deeper.
+#
+# Split out of silver_customers_etl (see that pipeline's own comment for the tradeoff:
+# what used to be one pipeline's internal Silver->Gold step is now a cross-pipeline
+# dependency, sequenced by the customers_refresh job instead of Lakeflow's own DAG).
+#
+# gold_shared.dim_customer is the conformed customer dimension: built here by reading
+# silver_customers_etl's silver_customers.customers cross-pipeline, and in turn read by
+# any number of independent fact-building pipelines via a plain batch table read - this
+# pipeline has no knowledge of who reads it. credit_score is tracked as an SCD Type 2
+# attribute alongside the address columns (see dim_customer.py's TRACKED_COLUMNS list).
+#
+# schema: gold_shared below is this pipeline's own default, since Gold is all it produces.
+
+resources:
+  pipelines:
+    gold_shared_customers_etl:
+      # Suffixed with the target name so dev/prod pipelines are distinguishable in the
+      # workspace UI - both would otherwise deploy as the identical "gold_shared_customers_etl".
+      name: gold_shared_customers_etl_${bundle.target}
+      catalog: ${var.catalog}
+      schema: gold_shared
+      serverless: true
+      continuous: false
+      root_path: "../../../src/pipelines/gold/gold_shared_customers_etl"
+
+      configuration:
+        bundle.catalog: ${var.catalog}
+
+      libraries:
+        - glob:
+            include: ../../../src/pipelines/gold/gold_shared_customers_etl/transformations/**
+
+      environment:
+        dependencies:
+          - --editable ${workspace.file_path}

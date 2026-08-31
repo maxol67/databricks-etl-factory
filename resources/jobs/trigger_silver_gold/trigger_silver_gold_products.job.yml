@@ -1,0 +1,54 @@
+# Automatically keeps silver_products_etl and gold_shared_products_etl current whenever
+# either product source's Bronze table changes, WITHOUT re-running Bronze itself - Bronze
+# is now each source's own responsibility, triggered independently on file arrival (see
+# resources/jobs/trigger_bronze/trigger_bronze_mdm_etl.job.yml and trigger_bronze_prodman_etl.job.yml).
+# This job only owns the Tier 2 (Silver -> Gold) steps, sequenced the same way
+# refresh_products_full sequences them (run_gold_shared_products_etl depends_on
+# run_silver_products_etl).
+#
+# Named trigger_silver_gold_products (both layers in the name), replacing this file's
+# former name trigger_silver_products.job.yml - that file's own comment said "if/when
+# gold_products_etl is built, this job MUST be renamed to trigger_silver_gold_products";
+# a Gold products pipeline now exists (named gold_shared_products_etl, not gold_products_etl
+# - see that pipeline's own comment for why), so this is that rename (same precedent
+# trigger_silver_gold_customers already went through).
+#
+# table_update trigger, not file_arrival: this job cares about Bronze TABLE changes, not raw
+# file landings, and a table_update trigger only fires on an actual new Delta commit. That
+# matters here because a Bronze pipeline run with zero new files (Auto Loader finds nothing)
+# produces zero new rows and writes NO new table version - so a no-op trigger_bronze_* run
+# never spuriously re-fires this job. condition: ANY_UPDATED, not ALL_UPDATED, because
+# silver_products_etl's products.py combines the two Bronze sources via two INDEPENDENT
+# @dp.append_flows (from_mdm, from_prodman), each enriched via a stream-static join against
+# the OTHER source's latest known snapshot - so an MDM-only Bronze update alone already
+# produces a correct, complete new Silver row (enriched with prodman's last-known reference
+# price); waiting on prodman too (ALL_UPDATED) would just add pointless latency.
+#
+# Note: table_update triggers are evaluated via Databricks' own periodic polling of table
+# versions, not an instant push like file_arrival - expect some latency versus real-time.
+#
+# For a full domain reload including Bronze (dev testing, backfills, recovery), use
+# refresh/refresh_products_full.job.yml instead.
+
+resources:
+  jobs:
+    trigger_silver_gold_products:
+      name: trigger_silver_gold_products_${bundle.target}
+
+      trigger:
+        table_update:
+          table_names:
+            - "${var.catalog}.bronze.mdm_products"
+            - "${var.catalog}.bronze.prodman_product_pricing"
+          condition: ANY_UPDATED
+
+      tasks:
+        - task_key: run_silver_products_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_products_etl.id}
+
+        - task_key: run_gold_shared_products_etl
+          depends_on:
+            - task_key: run_silver_products_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_shared_products_etl.id}

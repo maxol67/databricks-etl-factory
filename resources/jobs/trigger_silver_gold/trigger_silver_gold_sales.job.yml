@@ -1,0 +1,53 @@
+# Automatically keeps silver_sales_etl and gold_sales_etl current whenever either sales
+# source's Bronze table changes, WITHOUT re-running Bronze itself - Bronze is now each
+# source's own responsibility, triggered independently on file arrival (see
+# resources/jobs/trigger_bronze/trigger_bronze_sap_etl.job.yml and trigger_bronze_webshop_etl.job.yml).
+# This job only owns the Tier 2 (Silver -> Gold) steps, sequenced the same way
+# refresh_sales_full sequences them (run_gold_sales_etl depends_on run_silver_sales_etl).
+#
+# Named trigger_silver_gold_sales (both layers in the name), replacing this file's former
+# name trigger_silver_sales.job.yml - that file's own comment said "IMPORTANT: if/when
+# gold_sales_etl is built, this job MUST be renamed to trigger_silver_gold_sales"; a Gold
+# sales pipeline now exists (gold_sales_etl, fact_orders - see that pipeline's own comment),
+# so this is that rename (same precedent trigger_silver_gold_customers/
+# trigger_silver_gold_products already went through).
+#
+# table_update trigger, not file_arrival: this job cares about Bronze TABLE changes, not raw
+# file landings, and a table_update trigger only fires on an actual new Delta commit. That
+# matters here because a Bronze pipeline run with zero new files (Auto Loader finds nothing)
+# produces zero new rows and writes NO new table version - so a no-op trigger_bronze_* run
+# never spuriously re-fires this job. condition: ANY_UPDATED, not ALL_UPDATED, because
+# silver_sales_etl's sap_orders.py and webshop_orders.py write two INDEPENDENT Silver tables,
+# each driven solely by its own Bronze source (no join between them at Silver - fact_orders
+# is where they're finally unified, at Gold, see fact_orders.py) - so a webshop-only Bronze
+# update alone is already complete, valid input for Silver; waiting on sap_orders too
+# (ALL_UPDATED) would just add pointless latency to whichever leg arrived first.
+#
+# Note: table_update triggers are evaluated via Databricks' own periodic polling of table
+# versions, not an instant push like file_arrival - expect some latency versus real-time.
+#
+# For a full domain reload including Bronze (dev testing, backfills, recovery), use
+# refresh/refresh_sales_full.job.yml instead.
+
+resources:
+  jobs:
+    trigger_silver_gold_sales:
+      name: trigger_silver_gold_sales_${bundle.target}
+
+      trigger:
+        table_update:
+          table_names:
+            - "${var.catalog}.bronze.sap_orders"
+            - "${var.catalog}.bronze.webshop_orders"
+          condition: ANY_UPDATED
+
+      tasks:
+        - task_key: run_silver_sales_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_sales_etl.id}
+
+        - task_key: run_gold_sales_etl
+          depends_on:
+            - task_key: run_silver_sales_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_sales_etl.id}

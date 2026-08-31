@@ -1,0 +1,34 @@
+.databricks/
+build/
+dist/
+__pycache__/
+*.egg-info
+# No trailing slash: a trailing slash only matches directories, not symlinks. .venv is
+# sometimes a symlink to an external venv location rather than a real directory (confirmed
+# live: `.venv/` left a symlinked .venv showing as untracked) - this form matches both.
+.venv
+# Any tool's dotdir cache (.pytest_cache, .ruff_cache, .mypy_cache, etc.), not just today's set.
+.*_cache/
+scratch/**
+!scratch/README.md
+**/explorations/**
+!**/explorations/README.md
+
+# Claude Code local directory
+.claude/
+
+# Local project notes (personal, not for the public repo)
+_notes/
+
+# Real config, filled in with your own values from the tracked databricks.yml.example template -
+# see README.md#getting-started. Never commit this.
+/databricks.yml
+
+# Editor/tool backup snapshots (e.g. Databricks VS Code extension's local-environment sync)
+*.bak
+
+# Personal VS Code workspace settings/extension recommendations
+.vscode/
+
+# macOS
+.DS_Store

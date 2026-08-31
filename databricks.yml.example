@@ -1,0 +1,91 @@
+# This is a Declarative Automation Bundle definition for etl_factory.
+# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+#
+# This is a template, tracked in git - copy it to databricks.yml (gitignored) and replace every
+# <YOUR_...> placeholder with your own values:
+#   cp databricks.yml.example databricks.yml
+bundle:
+  name: etl_factory
+  uuid: 4402c9ab-8500-4a90-be46-ad2b121fc267
+
+include:
+  # Explicit per-folder globs, NOT a recursive resources/**/*.yml - confirmed live (CLI
+  # v1.14.0) that the double-star recursive glob validates fine (`bundle validate` resolves
+  # cross-references through it without error) but silently matches ZERO files for
+  # `bundle deploy`/`bundle plan`'s resource discovery - `--select <name>` on an actually-
+  # defined resource fails with "no such resource", and a real deploy through the recursive
+  # glob deleted every previously-deployed resource without creating any replacements
+  # (desired state resolved as empty). Switching to explicit single-star per-folder globs
+  # fixed it immediately (validated: `bundle plan` went from "0 to add" to "15 to add" with
+  # no other change). One entry per resources/ subfolder - keep in sync when adding a new
+  # layer/role folder under resources/pipelines/ or resources/jobs/.
+  - resources/pipelines/bronze/*.yml
+  - resources/pipelines/silver/*.yml
+  - resources/pipelines/gold/*.yml
+  - resources/jobs/trigger_bronze/*.yml
+  - resources/jobs/trigger_silver_gold/*.yml
+  - resources/jobs/refresh/*.yml
+
+# Variable declarations. These variables are assigned in the dev/prod targets below.
+# This project gets its own dedicated CATALOG (catalog-level isolation, per Databricks'
+# Unity Catalog governance best practice), with Bronze/Silver/Gold/Staging as separate
+# SCHEMAS within it - matching Databricks' own ops.bronze/ops.silver/ops.gold example
+# exactly. Only the catalog varies between dev/prod; schema names are fixed.
+variables:
+  catalog:
+    description: The dedicated Unity Catalog catalog for this project's environment
+
+# Both targets below deploy under /Workspace/deployment - a plain folder, not a Databricks-
+# reserved path like /Workspace/Shared or /Workspace/Users/<you>. It's only this project's
+# suggested convention: create it once in the workspace UI (or via `databricks workspace
+# mkdirs`) before your first deploy, or replace it with any path you have write access to
+# (e.g. /Workspace/Shared/..., which Databricks does manage but opens read/write to every
+# workspace user by default - see `databricks bundle validate`'s warning if you switch to it).
+# Whichever path you pick, keep it fixed/non-personal (not
+# ${workspace.current_user.userName}) for both dev and prod - see the `dev:` comment below
+# for why.
+targets:
+  dev:
+    # No mode: development here on purpose - this is the one official, shared dev
+    # environment, not a per-developer sandbox. mode: development hard-requires a
+    # personal root_path (CLI: "must ... contain the current username to ensure
+    # uniqueness"), which is exactly the per-user isolation we don't want here.
+    #
+    # That tradeoff also forfeits mode: development's other big benefit though:
+    # automatically pausing every job trigger/schedule on deploy, specifically so a shared
+    # dev environment's Bronze/Silver/Gold jobs don't start firing for real on deploy. The
+    # `presets` block below recovers just that one behavior on its own, without pulling in
+    # the personal-root_path requirement - confirmed this is exactly what `presets` is for
+    # (mode defaults -> presets -> per-resource settings, in that precedence order). The
+    # trigger_*/refresh_* job ymls under resources/jobs/ deliberately do NOT set their own
+    # pause_status anymore, so this preset is the one place controlling it.
+    default: true
+    presets:
+      trigger_pause_status: PAUSED
+    workspace:
+      host: https://<YOUR_DEV_WORKSPACE_HOST>  # TODO: e.g. https://adb-xxxxxxxxxxxx.x.azuredatabricks.net
+      root_path: /Workspace/deployment/${bundle.name}/${bundle.target}  # TODO: adjust if desired, see note above
+    variables:
+      catalog: etl_factory_dev
+  prod:
+    mode: production
+    # mode: production does NOT pause triggers on its own (only mode: development's dev-safety
+    # behavior does) - explicit here anyway, matching dev's explicit presets block, rather than
+    # relying on whatever the API defaults to when no pause_status is set anywhere.
+    presets:
+      trigger_pause_status: UNPAUSED
+    workspace:
+      # Can be the same host as dev, or a genuinely separate workspace for stronger
+      # isolation (compute/network/admin settings, not just Unity Catalog) - see the
+      # tradeoffs in the "Getting started" section of README.md. Either way, DABs ties a
+      # profile to a target by matching workspace.host: `bundle validate`/`deploy` reject
+      # any --profile whose host doesn't match this one, with a message naming the profile
+      # that does - so if prod uses a different host than dev, that alone is enough to
+      # require the right --profile, with no target->profile mapping needed in deploy.sh.
+      host: https://<YOUR_PROD_WORKSPACE_HOST>  # TODO: e.g. https://adb-xxxxxxxxxxxx.x.azuredatabricks.net
+      root_path: /Workspace/deployment/${bundle.name}/${bundle.target}  # TODO: adjust if desired, see note above
+    variables:
+      catalog: etl_factory_prod
+    permissions:
+      - user_name: ${workspace.current_user.userName}
+        level: CAN_MANAGE

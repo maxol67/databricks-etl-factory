@@ -1,0 +1,45 @@
+# Orchestrates a full, on-demand refresh of the sales business domain: the two Tier 1 sources
+# (bronze_sap_etl, bronze_webshop_etl) must both complete before Tier 2's silver_sales_etl
+# runs, since its Silver layer reads their Bronze tables cross-pipeline, and silver_sales_etl
+# must itself complete before gold_sales_etl runs (it reads silver_sales.sap_orders/
+# webshop_orders cross-pipeline) - see silver_sales_etl.pipeline.yml/gold_sales_etl.pipeline.yml.
+# Use this job, not the four pipelines individually, for a full sales-domain refresh (dev
+# testing, backfills, recovery).
+#
+# Prefixed refresh_ (not <domain>_refresh) for the same reason pipelines are prefixed by
+# layer: the Databricks Jobs list is flat, no folders, so the prefix is what groups all
+# refresh jobs together at a glance.
+#
+# Suffixed _full to distinguish it from
+# ../trigger_silver_gold/trigger_silver_gold_sales.job.yml, which table_update-triggers only
+# the Silver->Gold stages automatically whenever Bronze changes - this job is the manual,
+# always-runs-everything counterpart, kept for full reloads that trigger_silver_gold_sales
+# deliberately doesn't do on its own. On-demand only (no schedule/trigger) - run via
+# `databricks bundle run refresh_sales_full -t <target> --profile <profile>`.
+
+resources:
+  jobs:
+    refresh_sales_full:
+      name: refresh_sales_full_${bundle.target}
+
+      tasks:
+        - task_key: run_bronze_sap_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bronze_sap_etl.id}
+
+        - task_key: run_bronze_webshop_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bronze_webshop_etl.id}
+
+        - task_key: run_silver_sales_etl
+          depends_on:
+            - task_key: run_bronze_sap_etl
+            - task_key: run_bronze_webshop_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_sales_etl.id}
+
+        - task_key: run_gold_sales_etl
+          depends_on:
+            - task_key: run_silver_sales_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_sales_etl.id}

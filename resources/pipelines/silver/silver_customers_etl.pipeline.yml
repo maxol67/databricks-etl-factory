@@ -1,0 +1,51 @@
+# Tier 2 (business-domain) pipeline for Customers: Bronze (cross-pipeline) -> Silver only.
+# See CONVENTIONS.md for the project's schema-allocation rules and README.md for the target
+# architecture, the Tier 1/Tier 2 pipeline-grouping principle, and why pipelines are also
+# prefixed by layer (bronze_/silver_/gold_) - the Databricks Pipelines list is flat, no
+# folders, so the prefix is the only way to group by layer at a glance.
+#
+# Gold (gold_shared_customers_etl) is a SEPARATE pipeline, not a further layer of this one - the
+# tradeoff of splitting bronze/silver/gold into pipelines strictly by layer: what used to
+# be one pipeline's internal, guaranteed-ordered Silver->Gold step is now a cross-pipeline
+# dependency, sequenced by the customers_refresh job instead of Lakeflow's own DAG. See
+# BACKLOG.md if that gap ever needs closing tighter than job-level sequencing.
+#
+# Tier 2 = grouped by WHICH BUSINESS DOMAIN consumes the data, not by source. Reads
+# bronze_crm_etl's and bronze_finance_etl's Bronze tables cross-pipeline (plain
+# batch/stream table reads by fully-qualified name) and JOINS them (not a fan-in/union
+# like silver_sales_etl's separate order sources - these are different attributes of the
+# same customer, not more rows) into one enriched silver_customers.customers, which
+# gold_shared_customers_etl then reads cross-pipeline in turn.
+#
+# schema: silver_customers below is this pipeline's own default, since Bronze is no
+# longer part of this pipeline (bronze_crm_etl owns it).
+#
+# Also writes silver_data_quality.crm_customers_findings and
+# silver_data_quality.finance_customer_credit_score_findings (fully-qualified, outside this
+# pipeline's own default schema) - rows that fail a check: rejected rows are excluded from
+# `customers` above and warning rows still merge into it, but both land here, kept for manual
+# review instead of only a metrics count. See customers.py's docstring and CONVENTIONS.md's
+# Schema allocation rule.
+
+resources:
+  pipelines:
+    silver_customers_etl:
+      # Suffixed with the target name so dev/prod pipelines are distinguishable in the
+      # workspace UI - both would otherwise deploy as the identical "silver_customers_etl".
+      name: silver_customers_etl_${bundle.target}
+      catalog: ${var.catalog}
+      schema: silver_customers
+      serverless: true
+      continuous: false
+      root_path: "../../../src/pipelines/silver/silver_customers_etl"
+
+      configuration:
+        bundle.catalog: ${var.catalog}
+
+      libraries:
+        - glob:
+            include: ../../../src/pipelines/silver/silver_customers_etl/transformations/**
+
+      environment:
+        dependencies:
+          - --editable ${workspace.file_path}

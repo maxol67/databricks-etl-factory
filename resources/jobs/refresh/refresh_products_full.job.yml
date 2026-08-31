@@ -1,0 +1,49 @@
+# Orchestrates a full, on-demand refresh of the products business domain, FOUR stages, not
+# two: the two Tier 1 sources (bronze_mdm_etl, bronze_prodman_etl) must both complete
+# before Tier 2's silver_products_etl runs (it joins their Bronze tables cross-pipeline),
+# and silver_products_etl must itself complete before gold_shared_products_etl runs (it reads
+# silver_products.products cross-pipeline). Use this job, not the four pipelines
+# individually, for a full products-domain refresh (dev testing, backfills, recovery).
+#
+# Grew from two stages to four when bronze_prodman_etl/gold_shared_products_etl were added - same
+# shape refresh_customers_full already has, for the same reason (two Tier 1 sources joined
+# at Silver, Gold reading Silver in turn).
+#
+# Prefixed refresh_ (not <domain>_refresh) for the same reason pipelines are prefixed by
+# layer: the Databricks Jobs list is flat, no folders, so the prefix is what groups all
+# refresh jobs together at a glance.
+#
+# Suffixed _full to distinguish it from
+# ../trigger_silver_gold/trigger_silver_gold_products.job.yml, which table_update-triggers
+# only the Silver->Gold stages automatically whenever Bronze changes - this job is the
+# manual, always-runs-everything counterpart, kept for full reloads that
+# trigger_silver_gold_products deliberately doesn't do on its own. On-demand only (no
+# schedule/trigger) - run via `databricks bundle run refresh_products_full -t <target>
+# --profile <profile>`.
+
+resources:
+  jobs:
+    refresh_products_full:
+      name: refresh_products_full_${bundle.target}
+
+      tasks:
+        - task_key: run_bronze_mdm_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bronze_mdm_etl.id}
+
+        - task_key: run_bronze_prodman_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bronze_prodman_etl.id}
+
+        - task_key: run_silver_products_etl
+          depends_on:
+            - task_key: run_bronze_mdm_etl
+            - task_key: run_bronze_prodman_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_products_etl.id}
+
+        - task_key: run_gold_shared_products_etl
+          depends_on:
+            - task_key: run_silver_products_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_shared_products_etl.id}

@@ -1,0 +1,30 @@
+# Runs bronze_finance_etl automatically whenever a new file lands in the Internal Drop
+# volume under Finance's own top-level folder. Single-task job, not folded into a bigger
+# job, because Tier 1 pipelines are independent per source (see
+# bronze_finance_etl.pipeline.yml) - a Finance file arrival has nothing to do with the
+# CRM's own delivery schedule, so it shouldn't re-run bronze_crm_etl too (a bigger job with
+# both as tasks would, since a trigger fires the whole job's task graph, not a single task
+# within it).
+#
+# Prefixed trigger_ (not bronze_) for the same reason refresh_ jobs are prefixed: the
+# Databricks Jobs list is flat, no folders, so the prefix is what groups all trigger jobs
+# together at a glance - and distinguishes this file-arrival-triggered job from the
+# bronze_finance_etl PIPELINE it runs (same base name, different resource type/namespace).
+#
+# Downstream: this only refreshes Bronze. See
+# trigger_silver_gold/trigger_silver_gold_customers.job.yml for how Silver/Gold pick up the
+# change automatically via their own table_update trigger.
+
+resources:
+  jobs:
+    trigger_bronze_finance_etl:
+      name: trigger_bronze_finance_etl_${bundle.target}
+
+      trigger:
+        file_arrival:
+          url: "/Volumes/${var.catalog}/drop/internal_drop/finance/customer_credit_score/"
+
+      tasks:
+        - task_key: run_bronze_finance_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.bronze_finance_etl.id}

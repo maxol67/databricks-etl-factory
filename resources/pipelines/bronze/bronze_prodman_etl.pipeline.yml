@@ -1,0 +1,41 @@
+# Tier 1 (source-ingestion) pipeline for Product Management (prodman): Internal Drop ->
+# Bronze only. See CONVENTIONS.md for the project's schema-allocation rules and README.md for
+# the target architecture, the Tier 1/Tier 2 pipeline-grouping principle, and why
+# pipelines are also prefixed by layer (bronze_/silver_/gold_) - the Databricks Pipelines
+# list is flat, no folders, so the prefix is the only way to group by layer at a glance.
+#
+# Internal Drop, not Staging or System Drop: Product Management is an internal
+# department/system, and this is a different attribute of the same product entity
+# bronze_mdm_etl's mdm_products.py lands - a different source system, not a different
+# entity, hence its own Tier 1 pipeline rather than folding into bronze_mdm_etl (see
+# silver_products_etl.pipeline.yml for how Tier 2 joins the two).
+#
+# Tier 1 = grouped by WHO DELIVERS the data (one pipeline per source system, since each
+# system's delivery is independent). Tier 2's silver_products_etl owns the conformed
+# Silver representation, reading this pipeline's Bronze table cross-pipeline - this
+# pipeline has no knowledge of who reads it.
+#
+# schema: bronze below is this pipeline's own default, since Bronze is all it produces.
+
+resources:
+  pipelines:
+    bronze_prodman_etl:
+      # Suffixed with the target name so dev/prod pipelines are distinguishable in the
+      # workspace UI - both would otherwise deploy as the identical "bronze_prodman_etl".
+      name: bronze_prodman_etl_${bundle.target}
+      catalog: ${var.catalog}
+      schema: bronze
+      serverless: true
+      continuous: false
+      root_path: "../../../src/pipelines/bronze/bronze_prodman_etl"
+
+      configuration:
+        bundle.catalog: ${var.catalog}
+
+      libraries:
+        - glob:
+            include: ../../../src/pipelines/bronze/bronze_prodman_etl/transformations/**
+
+      environment:
+        dependencies:
+          - --editable ${workspace.file_path}

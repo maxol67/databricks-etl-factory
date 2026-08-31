@@ -1,0 +1,46 @@
+# Tier 2 (business-domain) pipeline for Sales: Gold only, reading Silver cross-pipeline.
+# See CONVENTIONS.md for the project's schema-allocation rules and README.md for the target
+# architecture, the Tier 1/Tier 2 pipeline-grouping principle, and why pipelines are also
+# prefixed by layer (bronze_/silver_/gold_) - the Databricks Pipelines list is flat, no
+# folders, so the prefix is the only way to group by layer at a glance.
+#
+# Named gold_sales_etl, not gold_shared_sales_etl: writes to its own domain-specific
+# gold_sales schema, not the shared gold_shared schema - see gold_shared_customers_etl's own
+# comment and CONVENTIONS.md's Pipeline naming section for why gold_shared_ is reserved for
+# the cross-domain-dimension case specifically, not a blanket Gold naming rule.
+#
+# Split out of silver_sales_etl (see that pipeline's own comment for the Silver/Gold
+# pipeline-split tradeoff) - fills BACKLOG.md's long-deferred "Gold fact_orders" entry, now
+# that gold_shared.dim_customer/dim_product both exist to join against.
+#
+# fact_orders unifies bronze_sap_etl's and bronze_webshop_etl's two separate Silver order
+# tables (silver_sales.sap_orders, silver_sales.webshop_orders) into ONE fact table - the
+# fan-in silver_sales_etl itself deliberately deferred finally happens here, at Gold, where
+# conforming multiple sources into one shape is exactly the job. See fact_orders.py's own
+# docstring for the fan-in reasoning, the as-of dimension join, and why both surrogate and
+# natural keys are kept for each dimension it references.
+#
+# schema: gold_sales below is this pipeline's own default, since Gold is all it produces.
+
+resources:
+  pipelines:
+    gold_sales_etl:
+      # Suffixed with the target name so dev/prod pipelines are distinguishable in the
+      # workspace UI - both would otherwise deploy as the identical "gold_sales_etl".
+      name: gold_sales_etl_${bundle.target}
+      catalog: ${var.catalog}
+      schema: gold_sales
+      serverless: true
+      continuous: false
+      root_path: "../../../src/pipelines/gold/gold_sales_etl"
+
+      configuration:
+        bundle.catalog: ${var.catalog}
+
+      libraries:
+        - glob:
+            include: ../../../src/pipelines/gold/gold_sales_etl/transformations/**
+
+      environment:
+        dependencies:
+          - --editable ${workspace.file_path}

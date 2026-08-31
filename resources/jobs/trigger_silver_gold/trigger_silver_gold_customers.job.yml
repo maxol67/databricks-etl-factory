@@ -1,0 +1,53 @@
+# Automatically keeps silver_customers_etl and gold_shared_customers_etl current whenever either
+# customer source's Bronze table changes, WITHOUT re-running Bronze itself - Bronze is now
+# each source's own responsibility, triggered independently on file arrival (see
+# resources/jobs/trigger_bronze/trigger_bronze_crm_etl.job.yml and trigger_bronze_finance_etl.job.yml).
+# This job only owns the Tier 2 (Silver -> Gold) steps, sequenced the same way
+# refresh_customers_full sequences them (run_gold_shared_customers_etl depends_on
+# run_silver_customers_etl).
+#
+# Named trigger_silver_gold_customers (both layers in the name) since this domain actually
+# has a Gold pipeline - same as trigger_silver_gold_products/trigger_silver_gold_sales, now
+# that every domain does (see CONVENTIONS.md's Job naming section for the general rule this
+# follows, and its own history: this repo's sales domain briefly had a Silver-only
+# trigger_silver_sales.job.yml before gold_sales_etl existed).
+#
+# table_update trigger, not file_arrival: this job cares about Bronze TABLE changes, not raw
+# file landings, and a table_update trigger only fires on an actual new Delta commit. That
+# matters here because a Bronze pipeline run with zero new files (Auto Loader finds nothing)
+# produces zero new rows and writes NO new table version - so a no-op trigger_bronze_* run
+# never spuriously re-fires this job. condition: ANY_UPDATED, not ALL_UPDATED, because
+# silver_customers_etl's customers.py combines the two Bronze sources via two INDEPENDENT
+# @dp.append_flows (from_crm, from_finance), each enriched via a stream-static join against
+# the OTHER source's latest known snapshot - so a CRM-only Bronze update alone already
+# produces a correct, complete new Silver row (enriched with finance's last-known credit
+# score); waiting on finance too (ALL_UPDATED) would just add pointless latency.
+#
+# Note: table_update triggers are evaluated via Databricks' own periodic polling of table
+# versions, not an instant push like file_arrival - expect some latency versus real-time.
+#
+# For a full domain reload including Bronze (dev testing, backfills, recovery), use
+# refresh/refresh_customers_full.job.yml instead.
+
+resources:
+  jobs:
+    trigger_silver_gold_customers:
+      name: trigger_silver_gold_customers_${bundle.target}
+
+      trigger:
+        table_update:
+          table_names:
+            - "${var.catalog}.bronze.crm_customers"
+            - "${var.catalog}.bronze.finance_customer_credit_score"
+          condition: ANY_UPDATED
+
+      tasks:
+        - task_key: run_silver_customers_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_customers_etl.id}
+
+        - task_key: run_gold_shared_customers_etl
+          depends_on:
+            - task_key: run_silver_customers_etl
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_shared_customers_etl.id}

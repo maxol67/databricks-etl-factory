@@ -1,0 +1,50 @@
+# Tier 2 (business-domain) pipeline for Products: Silver (cross-pipeline) -> Gold only.
+# See CONVENTIONS.md for the project's schema-allocation rules and README.md for the target
+# architecture, the Tier 1/Tier 2 pipeline-grouping principle, and why pipelines are also
+# prefixed by layer (bronze_/silver_/gold_) - the Databricks Pipelines list is flat, no
+# folders, so the prefix is the only way to group by layer at a glance.
+#
+# Named gold_shared_products_etl, not gold_products_etl - same reasoning as
+# gold_shared_customers_etl.pipeline.yml's own comment: every other pipeline's name suffix
+# matches its actual schema exactly, and this pipeline writes to the shared gold_shared
+# schema, not a domain-specific one, so the name says so now too.
+#
+# Split out of silver_products_etl (see that pipeline's own comment for the tradeoff:
+# what used to be one pipeline's internal Silver->Gold step is now a cross-pipeline
+# dependency, sequenced by the refresh_products_full/trigger_silver_gold_products jobs
+# instead of Lakeflow's own DAG) - same split gold_shared_customers_etl already went through.
+#
+# gold_shared.dim_product is the conformed product dimension: built here by reading
+# silver_products_etl's silver_products.products cross-pipeline, and in turn read by any
+# number of independent fact-building pipelines via a plain batch table read - gold_sales_etl's
+# fact_orders is the real example now - this pipeline has no knowledge of who reads it.
+# reference_price is tracked as an SCD Type 2 attribute (see dim_product.py's
+# TRACKED_COLUMNS list) - product_name/category/subcategory changes update the current row
+# in place instead (SCD Type 1).
+#
+# schema: gold_shared below is this pipeline's own default, since Gold is all it produces -
+# same placement as gold_shared_customers_etl's dim_customer, for the same reason (a
+# conformed dimension, not scoped to one business domain).
+
+resources:
+  pipelines:
+    gold_shared_products_etl:
+      # Suffixed with the target name so dev/prod pipelines are distinguishable in the
+      # workspace UI - both would otherwise deploy as the identical "gold_shared_products_etl".
+      name: gold_shared_products_etl_${bundle.target}
+      catalog: ${var.catalog}
+      schema: gold_shared
+      serverless: true
+      continuous: false
+      root_path: "../../../src/pipelines/gold/gold_shared_products_etl"
+
+      configuration:
+        bundle.catalog: ${var.catalog}
+
+      libraries:
+        - glob:
+            include: ../../../src/pipelines/gold/gold_shared_products_etl/transformations/**
+
+      environment:
+        dependencies:
+          - --editable ${workspace.file_path}
