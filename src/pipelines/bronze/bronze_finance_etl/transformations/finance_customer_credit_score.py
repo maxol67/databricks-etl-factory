@@ -11,8 +11,13 @@ source name (`finance/`), per this project's Staging/Drop convention, with a
 
 No validation performed here - Bronze preserves the source verbatim. `finance_` is this
 table's source-system abbreviation.
+
+drop_path/schema_location come from config/source_environment.yml instead of being built from
+literals here - see CONVENTIONS.md's "Source registry and Source x Environment connection
+config" section for why, and how pipeline code reads the file via bundle.workspace_file_path.
 """
 
+import yaml
 from pyspark import pipelines as dp
 from pyspark.sql.functions import col, current_timestamp
 
@@ -20,8 +25,14 @@ SOURCE_NAME = "finance"
 ENTITY_NAME = "customer_credit_score"
 
 catalog = spark.conf.get("bundle.catalog")
-drop_path = f"/Volumes/{catalog}/drop/internal_drop/{SOURCE_NAME}/{ENTITY_NAME}/"
-schema_location = f"/Volumes/{catalog}/drop/internal_drop/_schemas/{SOURCE_NAME}_{ENTITY_NAME}_bronze/"
+target = spark.conf.get("bundle.target")
+workspace_file_path = spark.conf.get("bundle.workspace_file_path")
+
+with open(f"{workspace_file_path}/config/source_environment.yml") as f:
+    connection = yaml.safe_load(f)[SOURCE_NAME][target]
+
+drop_path = connection["drop_path"].format(catalog=catalog)
+schema_location = connection["schema_location"].format(catalog=catalog)
 
 
 @dp.table(

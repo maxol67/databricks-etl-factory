@@ -138,39 +138,28 @@ reads and uses to generate/maintain a pipeline's code directly, instead of a per
 that context by hand every time - still following this repo's house conventions
 (`CONVENTIONS.md`), not a generic runtime interpreting the config at execution time.
 
-Open question, not yet decided: where the config itself lives (a few YAML/JSON files vs. a Delta
-table vs. Lakebase) - though the case for anything heavier than plain files is much weaker now
-than a generic-runtime design would have required. Same open storage question as
-`project_source` connection data's, below.
+The storage question for connection info specifically is settled - see CONVENTIONS.md's "Source
+registry and Source x Environment connection config" section: a plain git-tracked file, not a
+database. Whether a fuller per-source generation config (target schema, business rules) needs
+something heavier than that is still open, but nothing so far has justified it.
 
-### Multi-tenant source parameterization (`project_source` pattern)
+### Project/tenant dimension for source connection config
 
-This project's pipelines parameterize `catalog` per DAB target (`${var.catalog}`), but staging/drop paths
-are hardcoded per source (e.g. `bronze_sap_etl`'s `sap_orders.py` reads
-`/Volumes/{catalog}/staging/staging/sap/orders/` - no subsidiary/tenant dimension at all). This
-works for one deployment per source but doesn't scale to "the same source system, many
-independent instances" (e.g. SAP deployed separately per regional subsidiary) without either
-deploying N separate copies of the pipeline or hardcoding N branches into one.
+CONVENTIONS.md's "Source registry and Source x Environment connection config" section covers
+`Source` x `Environment` (implemented, all six sources). Deliberately not implemented: a
+`Project`/tenant dimension on top of that for "the same source system, many independent instances"
+(e.g. SAP deployed separately per regional subsidiary) - nothing in this reference project needs
+it yet, and adding it before there's a real second tenant would mean guessing its shape.
 
-Idea: separate two independent dimensions, matching a pattern from the user's own prior ControlDB
-design - `Project` (the subsidiary/tenant) and `Source` (the system type, e.g. SAP), with a
-`project_source` combination holding only the connection data for that pairing (host,
-credentials, path). The transformation *logic* for a given source type (e.g. "SAP product data")
-stays a single pipeline, written/generated once - the schema doesn't change by region - while
-`project` becomes a parameterized dimension threaded through staging/drop paths (e.g.
-`.../staging/{project}/sap/orders/` instead of `.../staging/sap/orders/`) and connection config,
-not a reason to generate or deploy N copies of the pipeline code.
+The general principle to hold onto if that changes: extend `config/sources.yml`/
+`config/source_environment.yml` themselves (e.g. nest a `project` layer between source and
+environment) rather than reaching for a database - add only the piece actually needed, not a full
+relational control-table schema up front.
 
-Key distinction worth keeping: this solves *connection/deployment* variation across many tenants
-of the *same* source type cheaply (one pipeline's worth of code + N trivial config rows),
+Key distinction worth keeping, if this is ever added: it would solve *connection/deployment*
+variation across many tenants of the *same* source type cheaply (config rows, not code),
 regardless of whether the pipeline itself is hand-written, agent-generated, or metadata-driven -
-it does **not** solve *genuinely different transformation logic* per tenant (e.g. one
+it would **not** solve *genuinely different transformation logic* per tenant (e.g. one
 subsidiary's SAP instance has an extra custom field the others don't); that case still needs
 either per-tenant logic variation (agent-generated) or a metadata-driven engine's conditional
 branching.
-
-Open question, not yet decided: where `project_source` connection data itself lives (DAB target
-variables don't scale cleanly past a handful of targets; a config table - Delta or Lakebase - is
-the more likely fit for genuine multi-tenancy, tying into the same open storage question as
-Config-driven pipeline generation above) and how a pipeline deployment maps to a `project` at
-runtime (one DAB target per project? one deployment parameterized by a runtime variable?).

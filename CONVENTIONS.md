@@ -109,11 +109,12 @@ table-name prefixes), not just naming:
   source, so splitting it further wouldn't buy real governance value and would just cause schema
   sprawl as sources grow.
   - Each Bronze transformation file declares `SOURCE_NAME`/`ENTITY_NAME` as module-level
-    constants and builds the table's `name=`, its Staging/Drop path, and its Auto Loader schema
-    location from those two - never as independent string literals. This isn't for readability
-    (`sap_orders` is already self-explanatory) - it's so the table name and its storage path
-    can't silently drift apart, since both are now computed from the same two values instead of
-    typed twice. See `sap_orders.py` for the pattern.
+    constants and builds the table's `name=` from those two - never as an independent string
+    literal. This isn't for readability (`sap_orders` is already self-explanatory) - it's so the
+    table name can't silently drift from the source/entity it actually reads. Its Staging/Drop
+    path and Auto Loader schema location are looked up from `config/source_environment.yml` by
+    that same `SOURCE_NAME`, not built from string interpolation - see "Source registry and
+    Source x Environment connection config" below. See `sap_orders.py` for the pattern.
 - **Silver**: one schema per **subject area** - what entity the data is about, e.g. `orders` vs.
   `customers` vs. `products` (`silver_sales`, `silver_customers`, `silver_products`), plus a
   `silver_data_quality` schema for rows that fail a Silver check, deliberately kept out of the
@@ -348,6 +349,57 @@ dimension.
   `drop.<zone>/<source_name>/<object>/` - source name always the top-level folder within the
   zone's volume.
 
+## Source registry and Source x Environment connection config
+
+Two git-tracked YAML files, `config/sources.yml` and `config/source_environment.yml`, replace what
+used to be literal Staging/Drop paths hardcoded in each Bronze transformation file:
+
+- `config/sources.yml` - one entry per source, metadata that does NOT vary by environment: `name`,
+  `description`, and `type` (free text, documentation only - e.g. `file_drop` for every source
+  today, a future `lakeflow_connect` source once BACKLOG's "A real Lakeflow Connect-covered
+  source" entry is picked up). Never read by pipeline code - it's there so a reader can see what
+  each source is and how it's physically reached without opening its pipeline code.
+- `config/source_environment.yml` - shaped `source -> environment -> fields`, holding only what
+  genuinely varies by environment (staging/drop path, schema location, and eventually host/
+  credentials for a native-connector source), keyed by the same source `name` used in
+  `sources.yml` and by the DAB target name (`dev`/`prod`, via `bundle.target`). `Environment` gets
+  no registry file of its own - the DAB target name already owns that identity, so a standalone
+  `environment.yml` would just duplicate it and risk drifting from it.
+
+**How pipeline code reads it**: each Bronze pipeline's `configuration:` block carries
+`bundle.workspace_file_path: ${workspace.file_path}` and `bundle.target: ${bundle.target}`
+alongside `bundle.catalog`. Every pipeline's `environment.dependencies:
+[--editable ${workspace.file_path}]` already proves the *entire* bundle root - not just its own
+`transformations/` folder - is present on serverless compute at deploy time, so pipeline code
+opens `config/source_environment.yml` directly
+(`open(f"{workspace_file_path}/config/source_environment.yml")` + `yaml.safe_load`), looks up
+`[SOURCE_NAME][target]`, and fills `{catalog}` into the resulting path templates via `str.format`.
+`pyyaml` is a real `[project].dependencies` entry (not just the dev group) so it reaches pipeline
+runtime through the editable install. See `sap_orders.py` for the pattern - every Bronze
+transformation file follows it.
+
+**Why plain YAML, not a database**: the two files intentionally forgo what a relational control
+table would give for free - foreign-key referential integrity, dynamic active/inactive
+queryability via views/procs, an audit trail beyond git history, and concurrent-writer safety.
+None of these are scale limitations at this project's size; they're what a database gives a
+*person* maintaining config by hand, to mechanically catch what no single human reliably keeps
+consistent across every edit. `tests/test_config.py` does that same verification instead - every
+`config/source_environment.yml` entry names a real `config/sources.yml` source and vice versa,
+every source has `dev`/`prod` coverage and a non-empty `type`/`description`, and every Bronze
+pipeline's `SOURCE_NAME` is registered and vice versa - without needing a database to be the
+enforcement mechanism. It runs automatically as part of `uv run pytest` (see Testing below), so it
+re-checks on every change, not just when someone remembers to run it by hand; git history covers
+the audit trail for a low-frequency, PR-reviewed config. This is the same bet README's "Agentic
+ETL" section already makes for pipeline code (agent-authored/maintained instead of a
+metadata-driven runtime), extended one layer down to the config that describes the pipelines, not
+just the pipelines themselves.
+
+A `Project`/tenant dimension (the same source system, many independent instances - e.g. SAP
+deployed separately per regional subsidiary) is deliberately not implemented - see BACKLOG.md's
+remaining open idea for that. If it's ever needed, extend these same files (e.g. nest a `project`
+layer between source and environment in `source_environment.yml`) rather than reaching for a
+database.
+
 ## How to talk about Lakeflow - the declarative claim's real boundary
 
 Lakeflow Pipelines infer the dependency graph and parallelism from what each table/flow actually
@@ -397,7 +449,10 @@ process fails.
   cross-cutting checks (`tests/test_bundle.py` runs `databricks bundle validate` as a regression
   check against YAML/resource-reference breakage - skips rather than fails when no CLI/auth is
   available, so a fresh clone without Databricks credentials configured doesn't get a false
-  failure). This means every pipeline's test file is named `test_util.py`, same basename in a
+  failure; `tests/test_config.py` is the referential-integrity check for
+  `config/sources.yml`/`config/source_environment.yml` described above - no CLI/auth needed, it
+  only reads local YAML/Python files, so it always runs). This means every pipeline's test file is
+  named `test_util.py`, same basename in a
   different directory - `pyproject.toml`'s `[tool.pytest.ini_options]` sets
   `addopts = "--import-mode=importlib"` for exactly this reason (confirmed live: pytest's
   default import mode errors with "import file mismatch" the moment a second same-named

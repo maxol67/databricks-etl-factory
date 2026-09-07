@@ -88,6 +88,31 @@ every System Drop source, per `CONVENTIONS.md`'s Staging-vs-Drop section.)
 
 ### Step 3: Tier 1 - the Bronze pipeline
 
+First, register `wms` in the two source-config files (see CONVENTIONS.md's "Source registry and
+Source x Environment connection config" section) - the Bronze transformation file below reads
+these at runtime instead of hardcoding its Drop path:
+
+`config/sources.yml` (add this entry to the `sources:` list):
+
+```yaml
+  - name: wms
+    description: >-
+      WMS inventory-level export data, landed into the System Drop volume by WMS itself.
+    type: file_drop
+```
+
+`config/source_environment.yml` (add this entry):
+
+```yaml
+wms:
+  dev:
+    drop_path: "/Volumes/{catalog}/drop/system_drop/wms/inventory/"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/wms_inventory_bronze/"
+  prod:
+    drop_path: "/Volumes/{catalog}/drop/system_drop/wms/inventory/"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/wms_inventory_bronze/"
+```
+
 `resources/pipelines/bronze/bronze_wms_etl.pipeline.yml`:
 
 ```yaml
@@ -110,6 +135,11 @@ resources:
 
       configuration:
         bundle.catalog: ${var.catalog}
+        # Read by wms_inventory.py to look up its entry in config/source_environment.yml -
+        # see CONVENTIONS.md's "Source registry and Source x Environment connection config"
+        # section.
+        bundle.target: ${bundle.target}
+        bundle.workspace_file_path: ${workspace.file_path}
 
       libraries:
         - glob:
@@ -132,8 +162,13 @@ this project's Staging/Drop convention.
 
 No validation performed here - Bronze preserves the source verbatim. `wms_` is this table's
 source-system abbreviation.
+
+drop_path/schema_location come from config/source_environment.yml instead of being built from
+literals here - see CONVENTIONS.md's "Source registry and Source x Environment connection
+config" section for why, and how pipeline code reads the file via bundle.workspace_file_path.
 """
 
+import yaml
 from pyspark import pipelines as dp
 from pyspark.sql.functions import col, current_timestamp
 
@@ -141,8 +176,14 @@ SOURCE_NAME = "wms"
 ENTITY_NAME = "inventory"
 
 catalog = spark.conf.get("bundle.catalog")
-drop_path = f"/Volumes/{catalog}/drop/system_drop/{SOURCE_NAME}/{ENTITY_NAME}/"
-schema_location = f"/Volumes/{catalog}/drop/system_drop/_schemas/{SOURCE_NAME}_{ENTITY_NAME}_bronze/"
+target = spark.conf.get("bundle.target")
+workspace_file_path = spark.conf.get("bundle.workspace_file_path")
+
+with open(f"{workspace_file_path}/config/source_environment.yml") as f:
+    connection = yaml.safe_load(f)[SOURCE_NAME][target]
+
+drop_path = connection["drop_path"].format(catalog=catalog)
+schema_location = connection["schema_location"].format(catalog=catalog)
 
 
 @dp.table(

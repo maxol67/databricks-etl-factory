@@ -1,0 +1,58 @@
+# Source x Environment connection config: what genuinely varies by environment for each source
+# in config/sources.yml. See CONVENTIONS.md's "Source registry and Source x Environment
+# connection config" section for the design rationale and how pipeline code reads this file.
+#
+# `{catalog}` is a literal placeholder, filled in by pipeline code from `bundle.catalog` at
+# runtime (Python's str.format) - not a DAB substitution.
+#
+# dev and prod happen to resolve to the same relative path for every source today - the point is
+# this is now looked up, not hardcoded, so a future environment that genuinely differs (or a
+# future native-connector source needing real host/credentials) needs a config change here, not
+# a code change.
+sap:
+  dev:
+    staging_path: "/Volumes/{catalog}/staging/staging/sap/orders/"
+    schema_location: "/Volumes/{catalog}/staging/staging/_schemas/sap_orders_bronze/"
+  prod:
+    staging_path: "/Volumes/{catalog}/staging/staging/sap/orders/"
+    schema_location: "/Volumes/{catalog}/staging/staging/_schemas/sap_orders_bronze/"
+
+webshop:
+  dev:
+    drop_path: "/Volumes/{catalog}/drop/system_drop/webshop/orders/"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/webshop_orders_bronze/"
+  prod:
+    drop_path: "/Volumes/{catalog}/drop/system_drop/webshop/orders/"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/webshop_orders_bronze/"
+
+crm:
+  dev:
+    drop_path: "/Volumes/{catalog}/drop/system_drop/crm/customers/"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/crm_customers_bronze/"
+  prod:
+    drop_path: "/Volumes/{catalog}/drop/system_drop/crm/customers/"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/crm_customers_bronze/"
+
+finance:
+  dev:
+    drop_path: "/Volumes/{catalog}/drop/internal_drop/finance/customer_credit_score/"
+    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas/finance_customer_credit_score_bronze/"
+  prod:
+    drop_path: "/Volumes/{catalog}/drop/internal_drop/finance/customer_credit_score/"
+    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas/finance_customer_credit_score_bronze/"
+
+mdm:
+  dev:
+    staging_path: "/Volumes/{catalog}/staging/staging/mdm/products/"
+    schema_location: "/Volumes/{catalog}/staging/staging/_schemas/mdm_products_bronze/"
+  prod:
+    staging_path: "/Volumes/{catalog}/staging/staging/mdm/products/"
+    schema_location: "/Volumes/{catalog}/staging/staging/_schemas/mdm_products_bronze/"
+
+prodman:
+  dev:
+    drop_path: "/Volumes/{catalog}/drop/internal_drop/prodman/product_pricing/"
+    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas/prodman_product_pricing_bronze/"
+  prod:
+    drop_path: "/Volumes/{catalog}/drop/internal_drop/prodman/product_pricing/"
+    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas/prodman_product_pricing_bronze/"

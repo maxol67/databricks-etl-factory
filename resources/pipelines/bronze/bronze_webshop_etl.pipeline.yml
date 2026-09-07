@@ -26,6 +26,11 @@ resources:
 
       configuration:
         bundle.catalog: ${var.catalog}
+        # Read by webshop_orders.py to look up its entry in config/source_environment.yml -
+        # see CONVENTIONS.md's "Source registry and Source x Environment connection config"
+        # section.
+        bundle.target: ${bundle.target}
+        bundle.workspace_file_path: ${workspace.file_path}
 
       libraries:
         - glob:

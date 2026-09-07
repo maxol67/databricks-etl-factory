@@ -1,0 +1,36 @@
+# Source registry: one entry per source, metadata that does NOT vary by environment.
+# See CONVENTIONS.md's "Source registry and Source x Environment connection config" section for
+# the design rationale. `type` is free text, documentation only - never read by pipeline code.
+sources:
+  - name: sap
+    description: >-
+      SAP order data, landed into Staging by an external ETL/orchestration tool (SAP has no
+      native Lakeflow Connect connector).
+    type: file_drop
+
+  - name: webshop
+    description: >-
+      Webshop order data, landed into the System Drop volume by the webshop system itself.
+    type: file_drop
+
+  - name: crm
+    description: >-
+      CRM customer data, landed into the System Drop volume by the CRM system itself.
+    type: file_drop
+
+  - name: finance
+    description: >-
+      Finance's customer credit score data, landed into the Internal Drop volume by Finance's
+      own system.
+    type: file_drop
+
+  - name: mdm
+    description: >-
+      MDM product master data, landed into Staging by an external ETL/orchestration tool.
+    type: file_drop
+
+  - name: prodman
+    description: >-
+      Product Management's reference-price recommendations, landed into the Internal Drop
+      volume by Product Management's own system.
+    type: file_drop
