@@ -15,7 +15,7 @@ reference_price only, no timestamp of its own) - see silver_products_etl.pipelin
 how Silver copes with that.
 
 drop_path/schema_location come from config/source_environment.yml instead of being built from
-literals here - see CONVENTIONS.md's "Source registry and Source x Environment connection
+literals here - see CONVENTIONS.md's "Source registry and source x environment connection
 config" section for why, and how pipeline code reads the file via bundle.workspace_file_path.
 """
 

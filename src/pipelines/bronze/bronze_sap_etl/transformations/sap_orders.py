@@ -11,7 +11,7 @@ No validation performed here - Bronze preserves the source verbatim. `sap_` is t
 table's source-system abbreviation.
 
 staging_path/schema_location come from config/source_environment.yml instead of being built
-from literals here - see CONVENTIONS.md's "Source registry and Source x Environment connection
+from literals here - see CONVENTIONS.md's "Source registry and source x environment connection
 config" section for why, and how pipeline code reads the file via bundle.workspace_file_path.
 """
 

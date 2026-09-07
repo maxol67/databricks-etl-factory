@@ -1,6 +1,6 @@
 """Config integrity check: config/sources.yml and config/source_environment.yml must stay
 consistent with each other and with the actual Bronze pipeline code, the same way a foreign key
-would enforce it in a database - see CONVENTIONS.md's "Source registry and Source x Environment
+would enforce it in a database - see CONVENTIONS.md's "Source registry and source x environment
 connection config" section for why this is a check script instead. Run this after any change to
 either config file or to a Bronze transformation file's SOURCE_NAME.
 

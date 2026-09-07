@@ -139,14 +139,14 @@ that context by hand every time - still following this repo's house conventions
 (`CONVENTIONS.md`), not a generic runtime interpreting the config at execution time.
 
 The storage question for connection info specifically is settled - see CONVENTIONS.md's "Source
-registry and Source x Environment connection config" section: a plain git-tracked file, not a
+registry and source x environment connection config" section: a plain git-tracked file, not a
 database. Whether a fuller per-source generation config (target schema, business rules) needs
 something heavier than that is still open, but nothing so far has justified it.
 
 ### Project/tenant dimension for source connection config
 
-CONVENTIONS.md's "Source registry and Source x Environment connection config" section covers
-`Source` x `Environment` (implemented, all six sources). Deliberately not implemented: a
+CONVENTIONS.md's "Source registry and source x environment connection config" section covers
+`source` x `environment` (implemented, all six sources). Deliberately not implemented: a
 `Project`/tenant dimension on top of that for "the same source system, many independent instances"
 (e.g. SAP deployed separately per regional subsidiary) - nothing in this reference project needs
 it yet, and adding it before there's a real second tenant would mean guessing its shape.

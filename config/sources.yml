@@ -1,5 +1,5 @@
 # Source registry: one entry per source, metadata that does NOT vary by environment.
-# See CONVENTIONS.md's "Source registry and Source x Environment connection config" section for
+# See CONVENTIONS.md's "Source registry and source x environment connection config" section for
 # the design rationale. `type` is free text, documentation only - never read by pipeline code.
 sources:
   - name: sap

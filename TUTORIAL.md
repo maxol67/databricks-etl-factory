@@ -89,7 +89,7 @@ every System Drop source, per `CONVENTIONS.md`'s Staging-vs-Drop section.)
 ### Step 3: Tier 1 - the Bronze pipeline
 
 First, register `wms` in the two source-config files (see CONVENTIONS.md's "Source registry and
-Source x Environment connection config" section) - the Bronze transformation file below reads
+source x environment connection config" section) - the Bronze transformation file below reads
 these at runtime instead of hardcoding its Drop path:
 
 `config/sources.yml` (add this entry to the `sources:` list):
@@ -136,7 +136,7 @@ resources:
       configuration:
         bundle.catalog: ${var.catalog}
         # Read by wms_inventory.py to look up its entry in config/source_environment.yml -
-        # see CONVENTIONS.md's "Source registry and Source x Environment connection config"
+        # see CONVENTIONS.md's "Source registry and source x environment connection config"
         # section.
         bundle.target: ${bundle.target}
         bundle.workspace_file_path: ${workspace.file_path}
@@ -164,7 +164,7 @@ No validation performed here - Bronze preserves the source verbatim. `wms_` is t
 source-system abbreviation.
 
 drop_path/schema_location come from config/source_environment.yml instead of being built from
-literals here - see CONVENTIONS.md's "Source registry and Source x Environment connection
+literals here - see CONVENTIONS.md's "Source registry and source x environment connection
 config" section for why, and how pipeline code reads the file via bundle.workspace_file_path.
 """
 

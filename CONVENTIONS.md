@@ -114,7 +114,7 @@ table-name prefixes), not just naming:
     table name can't silently drift from the source/entity it actually reads. Its Staging/Drop
     path and Auto Loader schema location are looked up from `config/source_environment.yml` by
     that same `SOURCE_NAME`, not built from string interpolation - see "Source registry and
-    Source x Environment connection config" below. See `sap_orders.py` for the pattern.
+    source x environment connection config" below. See `sap_orders.py` for the pattern.
 - **Silver**: one schema per **subject area** - what entity the data is about, e.g. `orders` vs.
   `customers` vs. `products` (`silver_sales`, `silver_customers`, `silver_products`), plus a
   `silver_data_quality` schema for rows that fail a Silver check, deliberately kept out of the
@@ -349,7 +349,7 @@ dimension.
   `drop.<zone>/<source_name>/<object>/` - source name always the top-level folder within the
   zone's volume.
 
-## Source registry and Source x Environment connection config
+## Source registry and source x environment connection config
 
 Two git-tracked YAML files, `config/sources.yml` and `config/source_environment.yml`, replace what
 used to be literal Staging/Drop paths hardcoded in each Bronze transformation file:
@@ -362,7 +362,7 @@ used to be literal Staging/Drop paths hardcoded in each Bronze transformation fi
 - `config/source_environment.yml` - shaped `source -> environment -> fields`, holding only what
   genuinely varies by environment (staging/drop path, schema location, and eventually host/
   credentials for a native-connector source), keyed by the same source `name` used in
-  `sources.yml` and by the DAB target name (`dev`/`prod`, via `bundle.target`). `Environment` gets
+  `sources.yml` and by the DAB target name (`dev`/`prod`, via `bundle.target`). `environment` gets
   no registry file of its own - the DAB target name already owns that identity, so a standalone
   `environment.yml` would just duplicate it and risk drifting from it.
 

@@ -10,7 +10,7 @@ dependencies = [
     # add dependencies to the 'environment' section of your pipeline.yml file instead
     #
     # Needed to parse config/source_environment.yml at pipeline runtime (see CONVENTIONS.md's
-    # "Source registry and Source x Environment connection config" section) - declared here, not
+    # "Source registry and source x environment connection config" section) - declared here, not
     # in [dependency-groups].dev, so it reaches pipeline runtime via each pipeline's own
     # `--editable ${workspace.file_path}` install.
     "pyyaml~=6.0.2",
