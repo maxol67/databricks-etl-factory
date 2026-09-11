@@ -1,10 +1,10 @@
 # Databricks ETL Factory
 
-A native-Databricks-first ETL framework - validating and demonstrating a target architecture
-for medallion (Bronze/Silver/Gold) pipelines built on **Lakeflow**'s declarative model
-(Pipelines and Connect), instead of the imperative, hand-rolled orchestration that
-classic cloud and on-prem ETL tools still require. Hyperscaler-agnostic by design -
-nothing here is Azure/AWS/GCP-specific; Databricks itself runs on all three.
+**Agentic ETL framework for Databricks: lean config, fat conventions, an agent does the
+implementation** - built on **Lakeflow**'s declarative model (Pipelines and Connect) instead of
+the imperative, hand-rolled orchestration classic cloud and on-prem ETL tools still require.
+Hyperscaler-agnostic by design - nothing here is Azure/AWS/GCP-specific; Databricks itself runs on
+all three.
 
 ## About this project
 
