@@ -1,12 +1,12 @@
-"""Gold: conformed customer dimension, SCD Type 2 on address changes and credit score
-(see README.md and AGENTS.md for the project's schema-allocation and dimensional-modeling
-naming rules - why this lives in gold_shared and is named singular).
+"""Gold: conformed customer dimension, SCD Type 2 on address changes, credit score, and ABC
+classification (see README.md and AGENTS.md for the project's schema-allocation and
+dimensional-modeling naming rules - why this lives in gold_shared and is named singular).
 
 customer_key is the surrogate key (GENERATED ALWAYS AS IDENTITY, unique per historical
 version - not per customer); customer_id is the natural key from the CRM source.
-credit_score is in TRACKED_COLUMNS (SCD2-versioned, alongside address) because it's
-meaningful to know what score was current at a given point in time, e.g. for a
-historical risk assessment.
+credit_score and abc_class are in TRACKED_COLUMNS (SCD2-versioned, alongside address)
+because they're meaningful to know what values were current at a given point in time, e.g.
+for a historical risk assessment or customer segmentation analysis.
 
 Reads silver_customers_etl's silver_customers.customers cross-pipeline (fully-qualified
 name) - see that pipeline's own comment for the Silver/Gold pipeline-split tradeoff.
@@ -60,7 +60,7 @@ ADDRESS_COLUMNS = [
     "country",
     "region",
 ]
-TRACKED_COLUMNS = ADDRESS_COLUMNS + ["credit_score"]
+TRACKED_COLUMNS = ADDRESS_COLUMNS + ["credit_score", "abc_class"]
 
 # See CONVENTIONS.md's "SCD Type 2 backfill start" - this exact value is the project-wide
 # standard for every SCD2 Gold dimension's backfill flow, not a per-pipeline choice.
@@ -68,7 +68,7 @@ SCD2_BACKFILL_START_AT = "1900-01-01T00:00:00Z"
 
 dp.create_streaming_table(
     name=ENTITY_NAME,
-    comment="Conformed customer dimension - SCD Type 2 on address changes, SCD Type 1 on everything else.",
+    comment="Conformed customer dimension - SCD Type 2 on address changes, credit score, and ABC classification; SCD Type 1 on everything else.",
     table_properties={"quality": "gold"},
     schema="""
         customer_key BIGINT GENERATED ALWAYS AS IDENTITY,
@@ -84,6 +84,7 @@ dp.create_streaming_table(
         country STRING,
         region STRING,
         credit_score INT,
+        abc_class STRING,
         __START_AT TIMESTAMP,
         __END_AT TIMESTAMP,
         updated_at TIMESTAMP,
@@ -99,12 +100,12 @@ def customers_for_gold():
     # by column name, so passing Silver's value through unchanged here would silently mean
     # "Gold's _updated_at" and "Silver's _updated_at" are the same value, not each layer's own.
     #
-    # Drops _driving_table: that column tags which of silver_customers.customers' two source
-    # flows (from_crm/from_finance) produced a row - useful within Silver, meaningless once
-    # Gold's Auto CDC has merged everything into one conformed dim_customer timeline. Also
-    # keeps the source DataFrame's columns matching this table's explicit schema= below exactly
-    # - an extra column Auto CDC didn't expect is a schema mismatch, not something to silently
-    # carry through.
+    # Drops _driving_table: that column tags which of silver_customers.customers' three source
+    # flows (from_crm/from_finance_credit_score/from_finance_abc) produced a row - useful
+    # within Silver, meaningless once Gold's Auto CDC has merged everything into one conformed
+    # dim_customer timeline. Also keeps the source DataFrame's columns matching this table's
+    # explicit schema= below exactly - an extra column Auto CDC didn't expect is a schema
+    # mismatch, not something to silently carry through.
     return (
         spark.readStream.table(f"{catalog}.silver_customers.customers")
         .drop("_driving_table")

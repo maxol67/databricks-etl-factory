@@ -335,6 +335,26 @@ def generate_finance_credit_scores() -> list[dict]:
     ]
 
 
+def generate_finance_abc_classification() -> list[dict]:
+    """ABC classification for customers from Finance. Following the same pattern as credit
+    scores - only 2/3 of CUSTOMER_IDS, deliberately, to give Silver a genuine null case to
+    handle for the missing third. ABC classification represents customer value segmentation:
+    A = highest value (top 20%), B = medium value (next 30%), C = lower value (remaining 50%).
+    This gives silver_customers_etl's customers_from_crm LEFT JOIN against _latest_abc_class()
+    a genuine null case to handle.
+    """
+    covered = sorted(random.sample(CUSTOMER_IDS, k=round(len(CUSTOMER_IDS) * 2 / 3)))
+    abc_classes = ["A"] * 7 + ["B"] * 10 + ["C"] * 17  # Roughly 20/30/50 split
+    return [
+        {
+            "customer_id": customer_id,
+            "abc_class": random.choice(abc_classes),
+            "updated_at": _random_recent_timestamp(),
+        }
+        for customer_id in covered
+    ]
+
+
 def generate_mdm_products() -> tuple[list[dict], dict[str, float]]:
     """The full product pool - see PRODUCT_IDS above for why. category is picked first, then
     (product_name, subcategory, reference_price) come together from that category's own list
@@ -383,6 +403,10 @@ def main() -> None:
     _write_ndjson(
         generate_finance_credit_scores(),
         "finance/customer_credit_score/customer_credit_score.json",
+    )
+    _write_ndjson(
+        generate_finance_abc_classification(),
+        "finance/customer_abc_classification/customer_abc_classification.json",
     )
     _write_ndjson(product_rows, "mdm/products/products.json")
     _write_ndjson(

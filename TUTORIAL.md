@@ -106,11 +106,11 @@ these at runtime instead of hardcoding its Drop path:
 ```yaml
 wms:
   dev:
-    drop_path: "/Volumes/{catalog}/drop/system_drop/wms/inventory/"
-    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/wms_inventory_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/system_drop/wms/"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/wms_bronze/"
   prod:
-    drop_path: "/Volumes/{catalog}/drop/system_drop/wms/inventory/"
-    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/wms_inventory_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/system_drop/wms/"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/wms_bronze/"
 ```
 
 `resources/pipelines/bronze/bronze_wms_etl.pipeline.yml`:
@@ -164,7 +164,8 @@ No validation performed here - Bronze preserves the source verbatim. `wms_` is t
 source-system abbreviation.
 
 drop_path/schema_location come from config/source_environment.yml instead of being built from
-literals here - see CONVENTIONS.md's "Source registry and source x environment connection
+literals here. The drop_path points to the SOURCE base folder (/wms/), and entity-specific
+subfolders (like inventory/) are constructed dynamically in the transformation file - see CONVENTIONS.md's "Source registry and source x environment connection
 config" section for why, and how pipeline code reads the file via bundle.workspace_file_path.
 """
 
@@ -182,8 +183,9 @@ workspace_file_path = spark.conf.get("bundle.workspace_file_path")
 with open(f"{workspace_file_path}/config/source_environment.yml") as f:
     connection = yaml.safe_load(f)[SOURCE_NAME][target]
 
-drop_path = connection["drop_path"].format(catalog=catalog)
-schema_location = connection["schema_location"].format(catalog=catalog)
+# Construct entity-specific paths from base paths
+drop_path = f"{connection['drop_path'].format(catalog=catalog)}{ENTITY_NAME}/"
+schema_location = f"{connection['schema_location'].format(catalog=catalog)}_{ENTITY_NAME}/"
 
 
 @dp.table(
@@ -225,7 +227,7 @@ resources:
 
       trigger:
         file_arrival:
-          url: "/Volumes/${var.catalog}/drop/system_drop/wms/inventory/"
+          url: "/Volumes/${var.catalog}/drop/system_drop/wms/"
 
       tasks:
         - task_key: run_bronze_wms_etl

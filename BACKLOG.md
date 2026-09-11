@@ -40,8 +40,8 @@ review/approval gate, resolving that part of the open question above, at least f
 sources.
 
 **Internal Drop - implemented**, with a definition slightly broader than originally scoped:
-`bronze_finance_etl`'s `finance_customer_credit_score.py` reads `drop.internal_drop`'s
-`finance/customer_credit_score/` folder, and `bronze_prodman_etl`'s `prodman_product_pricing.py`
+`bronze_finance_etl`'s `finance_customer_credit_score.py` and `finance_customer_abc_classification.py` read `drop.internal_drop`'s
+`finance/customer_credit_score/` and `finance/customer_abc_classification/` folders, and `bronze_prodman_etl`'s `prodman_product_pricing.py`
 reads its `prodman/product_pricing/` folder. Both are systems pushing files programmatically, not
 an employee's manual upload (the original "who writes" distinction between Internal and System
 Drop) - placed in Internal Drop anyway since the actual boundary that matters here is

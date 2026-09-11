@@ -17,6 +17,7 @@ nothing here is Azure/AWS/GCP-specific; Databricks itself runs on all three.
 - [Getting started](#getting-started)
   - [Deploying](#deploying)
   - [Local Python environment](#local-python-environment)
+- [Working with AI Agents (Genie)](#working-with-ai-agents-genie)
 - [Tutorial: building your own data platform](#tutorial-building-your-own-data-platform)
 - [Code Formatting](#code-formatting)
 - [Testing](#testing)
@@ -194,6 +195,44 @@ DATABRICKS_CONFIG_PROFILE=<profile> .venv/bin/databricks-connect test
 > is expected and harmless against this project's `free`-profile workspace - it's a
 > workspace-level security setting, unrelated to whether Databricks Connect itself is working
 > (live-verified: the session/cluster-connection checks before it pass cleanly).
+
+## Working with AI Agents (Genie)
+
+This project includes AI agent context files that Databricks Genie automatically loads when you work within this project:
+
+- **`AGENTS.md`** - Primary instructions for AI agents (Genie Code, Claude, etc.)
+- **`CLAUDE.md`** - Claude Code-specific import that references `AGENTS.md`
+
+### How It Works
+
+**Location-based context loading:** When you open or work on any file within `/Users/<your-email>/databricks-etl-factory/` or its subdirectories, Genie automatically:
+1. Looks for `AGENTS.md` and `CLAUDE.md` in the current directory and all parent directories
+2. Loads these files as "Project instructions" in the agent's context
+3. Uses them to guide all code generation, explanations, and assistance within this project
+
+**This is automatic** - you don't need to manually reference these files in your conversations.
+
+### Scope
+
+✅ **AGENTS.md applies to work on:**
+- Any file in `/databricks-etl-factory/` (notebooks, Python files, YAML configs, etc.)
+- Any file in subdirectories (`src/`, `resources/`, `docs/`, etc.)
+
+❌ **AGENTS.md does NOT apply to:**
+- Files in other projects (`/other-project/`)
+- Files outside this project directory
+
+**Think of it like `.gitignore`:** Just as `.gitignore` applies to all files in its directory tree, `AGENTS.md` guides Genie for all work within the `databricks-etl-factory` project directory.
+
+### What's In AGENTS.md
+
+- **Databricks AI Tools skills**: Instructions to load `databricks-core`, `databricks-pipelines`, and `databricks-dabs` skills first
+- **Project philosophy**: Framework vs. codebase, agentic approach, conventions-first development
+- **Current architecture**: Six hardcoded sources, twelve pipelines, twelve jobs
+- **References**: Pointers to `CONVENTIONS.md`, `TUTORIAL.md`, `BACKLOG.md`, `README.md`
+- **Development guidelines**: Generic implementation, no client-specific data, no config-driven layer yet
+
+When working with Genie in this project, it will follow these instructions automatically.
 
 ## Tutorial: building your own data platform
 
