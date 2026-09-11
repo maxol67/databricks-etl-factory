@@ -3,11 +3,16 @@ the project's schema-allocation rules).
 
 Lands in System Drop, not Staging: CRM is another system pushing files itself (no external
 ETL tool involved, no Lakeflow Connect connector) - same reasoning as bronze_webshop_etl's
-webshop_orders.py.
-Top-level folder is the source name (`crm/`), per this project's Staging/Drop convention.
+webshop_orders.py. Simulated the same way Staging simulates ADF: a plain Unity Catalog Volume
+standing in for wherever the CRM would actually push to, with a per-source-system folder
+(`crm/`) matching System Drop's shape, and a `customers/` subfolder within it for this
+specific object - the CRM could push other objects (contacts, opportunities, ...) as sibling
+subfolders later. Top-level folder is the source name (`crm/`), per this project's
+Staging/Drop convention.
 
 No validation performed here - Bronze preserves the source verbatim. `crm_` is this
-table's source-system abbreviation.
+table's source-system abbreviation, standing in for the (synthetic) CRM system this customer
+data originates from.
 
 drop_path/schema_location come from config/source_environment.yml instead of being built from
 literals here - see CONVENTIONS.md's "Source registry and source x environment connection

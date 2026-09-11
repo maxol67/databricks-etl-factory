@@ -6,8 +6,17 @@ for medallion (Bronze/Silver/Gold) pipelines built on **Lakeflow**'s declarative
 classic cloud and on-prem ETL tools still require. Hyperscaler-agnostic by design -
 nothing here is Azure/AWS/GCP-specific; Databricks itself runs on all three.
 
+## About this project
+
+This is a personal, from-scratch open-source project - a research lab for how a modern
+Databricks data platform and ETL should be architected, built entirely from publicly available
+Databricks/Microsoft guidance and general industry practice, not from any specific client
+engagement. It contains no proprietary or client intellectual property. Views expressed are my
+own.
+
 ## Table of contents
 
+- [About this project](#about-this-project)
 - [Why this exists](#why-this-exists)
   - [Declarative, not imperative](#declarative-not-imperative)
   - [Agentic ETL](#agentic-etl)

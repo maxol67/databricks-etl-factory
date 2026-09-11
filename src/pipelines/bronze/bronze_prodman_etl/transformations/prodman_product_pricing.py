@@ -4,12 +4,15 @@ AGENTS.md for the project's schema-allocation rules).
 Lands in Internal Drop, not Staging or System Drop: Product Management is an internal
 department/system, and this is a different attribute of the same product entity
 bronze_mdm_etl's mdm_products.py lands - a different source system, not a different entity,
-hence its own table in the bronze_prodman_etl pipeline (separate from MDM's Bronze table).
-Top-level folder is the source name (`prodman/`), per this project's Staging/Drop convention,
-with a `product_pricing/` subfolder for this specific object.
+hence its own Tier 1 pipeline (bronze_prodman_etl) rather than folding into bronze_mdm_etl
+(see silver_products_etl.pipeline.yml for how Tier 2 joins them). Top-level folder is the
+source name (`prodman/`), per this project's Staging/Drop convention, with a
+`product_pricing/` subfolder for this specific object.
 
 No validation performed here - Bronze preserves the source verbatim. `prodman_` is this
-table's source-system abbreviation.
+table's source-system abbreviation. Deliberately minimal schema (product_id,
+reference_price only, no timestamp of its own) - see silver_products_etl.pipeline.yml for
+how Silver copes with that.
 
 drop_path/schema_location come from config/source_environment.yml instead of being built from
 literals here - see CONVENTIONS.md's "Source registry and source x environment connection

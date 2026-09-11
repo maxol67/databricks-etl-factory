@@ -6,6 +6,15 @@
 # both as tasks would, since a trigger fires the whole job's task graph, not a single task
 # within it).
 #
+# Watches the finance/ folder itself, not a specific entity subfolder underneath it -
+# bronze_finance_etl.pipeline.yml now builds TWO Bronze tables from this one pipeline
+# (finance_customer_credit_score.py, finance_customer_abc_classification.py), each landing in
+# its own subfolder (customer_credit_score/, customer_abc_classification/). A file_arrival
+# trigger watches its url as a path PREFIX, so watching the shared parent catches an arrival
+# in either subfolder - watching only customer_credit_score/ (as this job did before ABC
+# classification was added) would silently never fire for an ABC file arriving in its own
+# sibling folder.
+#
 # Prefixed trigger_ (not bronze_) for the same reason refresh_ jobs are prefixed: the
 # Databricks Jobs list is flat, no folders, so the prefix is what groups all trigger jobs
 # together at a glance - and distinguishes this file-arrival-triggered job from the
@@ -22,7 +31,7 @@ resources:
 
       trigger:
         file_arrival:
-          url: "/Volumes/${var.catalog}/drop/internal_drop/finance/customer_credit_score/"
+          url: "/Volumes/${var.catalog}/drop/internal_drop/finance/"
 
       tasks:
         - task_key: run_bronze_finance_etl

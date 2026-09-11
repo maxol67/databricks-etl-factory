@@ -4,9 +4,12 @@ AGENTS.md for the project's schema-allocation rules).
 Lands in Internal Drop, not Staging or System Drop: Finance is an internal
 department/system, and this is a different attribute of the same customer entity
 bronze_crm_etl's crm_customers.py lands - a different source system, not a different
-entity, hence its own table in the bronze_finance_etl pipeline (separate from CRM's
-Bronze table). Top-level folder is the source name (`finance/`), per this project's
-Staging/Drop convention, with a `customer_credit_score/` subfolder for this specific object.
+entity, hence its own Tier 1 pipeline (bronze_finance_etl) rather than folding into
+bronze_crm_etl (see silver_customers_etl.pipeline.yml for how Tier 2 joins them). One of
+TWO tables this pipeline now builds - see finance_customer_abc_classification.py for
+Finance's other object, landing in its own sibling subfolder. Top-level folder is the
+source name (`finance/`), per this project's Staging/Drop convention, with a
+`customer_credit_score/` subfolder for this specific object.
 
 No validation performed here - Bronze preserves the source verbatim. `finance_` is this
 table's source-system abbreviation.
