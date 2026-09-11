@@ -5,54 +5,59 @@
 # `{catalog}` is a literal placeholder, filled in by pipeline code from `bundle.catalog` at
 # runtime (Python's str.format) - not a DAB substitution.
 #
+# BASE PATHS ONLY: Transformation files construct full paths as:
+#   full_path = f"{base_path}/{SOURCE_NAME}/{ENTITY_NAME}/"
+#   full_schema_location = f"{base_schema_location}/{SOURCE_NAME}_{ENTITY_NAME}_bronze/"
+# This allows a source to deliver multiple entities without YAML changes.
+#
 # dev and prod happen to resolve to the same relative path for every source today - the point is
 # this is now looked up, not hardcoded, so a future environment that genuinely differs (or a
 # future native-connector source needing real host/credentials) needs a config change here, not
 # a code change.
 sap:
   dev:
-    staging_path: "/Volumes/{catalog}/staging/staging/sap/orders/"
-    schema_location: "/Volumes/{catalog}/staging/staging/_schemas/sap_orders_bronze/"
+    staging_path: "/Volumes/{catalog}/staging/staging"
+    schema_location: "/Volumes/{catalog}/staging/staging/_schemas"
   prod:
-    staging_path: "/Volumes/{catalog}/staging/staging/sap/orders/"
-    schema_location: "/Volumes/{catalog}/staging/staging/_schemas/sap_orders_bronze/"
+    staging_path: "/Volumes/{catalog}/staging/staging"
+    schema_location: "/Volumes/{catalog}/staging/staging/_schemas"
 
 webshop:
   dev:
-    drop_path: "/Volumes/{catalog}/drop/system_drop/webshop/orders/"
-    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/webshop_orders_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/system_drop"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas"
   prod:
-    drop_path: "/Volumes/{catalog}/drop/system_drop/webshop/orders/"
-    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/webshop_orders_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/system_drop"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas"
 
 crm:
   dev:
-    drop_path: "/Volumes/{catalog}/drop/system_drop/crm/customers/"
-    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/crm_customers_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/system_drop"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas"
   prod:
-    drop_path: "/Volumes/{catalog}/drop/system_drop/crm/customers/"
-    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas/crm_customers_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/system_drop"
+    schema_location: "/Volumes/{catalog}/drop/system_drop/_schemas"
 
 finance:
   dev:
-    drop_path: "/Volumes/{catalog}/drop/internal_drop/finance/customer_credit_score/"
-    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas/finance_customer_credit_score_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/internal_drop"
+    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas"
   prod:
-    drop_path: "/Volumes/{catalog}/drop/internal_drop/finance/customer_credit_score/"
-    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas/finance_customer_credit_score_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/internal_drop"
+    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas"
 
 mdm:
   dev:
-    staging_path: "/Volumes/{catalog}/staging/staging/mdm/products/"
-    schema_location: "/Volumes/{catalog}/staging/staging/_schemas/mdm_products_bronze/"
+    staging_path: "/Volumes/{catalog}/staging/staging"
+    schema_location: "/Volumes/{catalog}/staging/staging/_schemas"
   prod:
-    staging_path: "/Volumes/{catalog}/staging/staging/mdm/products/"
-    schema_location: "/Volumes/{catalog}/staging/staging/_schemas/mdm_products_bronze/"
+    staging_path: "/Volumes/{catalog}/staging/staging"
+    schema_location: "/Volumes/{catalog}/staging/staging/_schemas"
 
 prodman:
   dev:
-    drop_path: "/Volumes/{catalog}/drop/internal_drop/prodman/product_pricing/"
-    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas/prodman_product_pricing_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/internal_drop"
+    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas"
   prod:
-    drop_path: "/Volumes/{catalog}/drop/internal_drop/prodman/product_pricing/"
-    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas/prodman_product_pricing_bronze/"
+    drop_path: "/Volumes/{catalog}/drop/internal_drop"
+    schema_location: "/Volumes/{catalog}/drop/internal_drop/_schemas"

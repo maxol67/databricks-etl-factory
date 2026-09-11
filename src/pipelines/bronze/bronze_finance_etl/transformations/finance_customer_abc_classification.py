@@ -1,15 +1,20 @@
-"""Bronze: raw product master data as landed in Staging by MDM (see README.md's Target
-architecture for what Staging is, and AGENTS.md for the project's schema-allocation rules).
+"""Bronze: raw customer ABC classifications as landed in the Internal Drop zone by Finance (see
+AGENTS.md for the project's schema-allocation rules).
 
-Staging, not a Drop zone: MDM has no native Lakeflow Connect connector, so this is exactly
-what Staging exists for (an external cloud-native or on-prem ETL/orchestration tool landing
-raw files) - same reasoning as bronze_sap_etl's sap_orders.py.
+Lands in Internal Drop, not Staging or System Drop: Finance is an internal
+department/system, and this is a different attribute of the same customer entity
+bronze_crm_etl's crm_customers.py lands - a different source system, not a different
+entity, hence its own Tier 1 pipeline (bronze_finance_etl) rather than folding into
+bronze_crm_etl. One of TWO tables this pipeline now builds - see
+finance_customer_credit_score.py for Finance's other object, landing in its own sibling
+subfolder. Top-level folder is the source name (`finance/`), per this project's Staging/Drop
+convention, with a `customer_abc_classification/` subfolder for this specific object.
 
-No validation performed here - Bronze preserves the source verbatim. `mdm_` is this
+No validation performed here - Bronze preserves the source verbatim. `finance_` is this
 table's source-system abbreviation.
 
-staging_path/schema_location come from config/source_environment.yml instead of being built
-from literals here - see CONVENTIONS.md's "Source registry and source x environment connection
+drop_path/schema_location come from config/source_environment.yml instead of being built from
+literals here - see CONVENTIONS.md's "Source registry and source x environment connection
 config" section for why, and how pipeline code reads the file via bundle.workspace_file_path.
 Paths are constructed dynamically as: base_path/{SOURCE_NAME}/{ENTITY_NAME}/ - this pattern
 allows the same source to deliver multiple entities without YAML changes.
@@ -19,8 +24,8 @@ import yaml
 from pyspark import pipelines as dp
 from pyspark.sql.functions import col, current_timestamp
 
-SOURCE_NAME = "mdm"
-ENTITY_NAME = "products"
+SOURCE_NAME = "finance"
+ENTITY_NAME = "customer_abc_classification"
 
 catalog = spark.conf.get("bundle.catalog")
 target = spark.conf.get("bundle.target")
@@ -30,25 +35,25 @@ with open(f"{workspace_file_path}/config/source_environment.yml") as f:
     connection = yaml.safe_load(f)[SOURCE_NAME][target]
 
 # Construct full paths dynamically using SOURCE_NAME + ENTITY_NAME
-base_staging_path = connection["staging_path"].format(catalog=catalog)
+base_drop_path = connection["drop_path"].format(catalog=catalog)
 base_schema_location = connection["schema_location"].format(catalog=catalog)
 
-staging_path = f"{base_staging_path}/{SOURCE_NAME}/{ENTITY_NAME}/"
+drop_path = f"{base_drop_path}/{SOURCE_NAME}/{ENTITY_NAME}/"
 schema_location = f"{base_schema_location}/{SOURCE_NAME}_{ENTITY_NAME}_bronze/"
 
 
 @dp.table(
     name=f"{SOURCE_NAME}_{ENTITY_NAME}",
-    comment="Raw product master data exactly as landed in Staging by MDM. No validation performed.",
+    comment="Raw customer ABC classifications exactly as landed in the Internal Drop volume by Finance. No validation performed.",
     table_properties={"quality": "bronze"},
 )
-def mdm_products():
+def finance_customer_abc_classification():
     return (
         spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "json")
         .option("cloudFiles.schemaLocation", schema_location)
         .option("cloudFiles.inferColumnTypes", "true")
-        .load(staging_path)
+        .load(drop_path)
         .select(
             "*",
             col("_metadata.file_path").alias("_source_file"),

@@ -42,6 +42,8 @@ upload sample_data/crm/customers/customers.json \
     "/Volumes/$CATALOG/drop/system_drop/crm/customers/customers.json"
 upload sample_data/finance/customer_credit_score/customer_credit_score.json \
     "/Volumes/$CATALOG/drop/internal_drop/finance/customer_credit_score/customer_credit_score.json"
+upload sample_data/finance/customer_abc_classification/customer_abc_classification.json \
+    "/Volumes/$CATALOG/drop/internal_drop/finance/customer_abc_classification/customer_abc_classification.json"
 upload sample_data/mdm/products/products.json \
     "/Volumes/$CATALOG/staging/staging/mdm/products/products.json"
 upload sample_data/prodman/product_pricing/product_pricing.json \

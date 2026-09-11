@@ -13,6 +13,8 @@ table's source-system abbreviation.
 staging_path/schema_location come from config/source_environment.yml instead of being built
 from literals here - see CONVENTIONS.md's "Source registry and source x environment connection
 config" section for why, and how pipeline code reads the file via bundle.workspace_file_path.
+Paths are constructed dynamically as: base_path/{SOURCE_NAME}/{ENTITY_NAME}/ - this pattern
+allows the same source to deliver multiple entities without YAML changes.
 """
 
 import yaml
@@ -29,8 +31,12 @@ workspace_file_path = spark.conf.get("bundle.workspace_file_path")
 with open(f"{workspace_file_path}/config/source_environment.yml") as f:
     connection = yaml.safe_load(f)[SOURCE_NAME][target]
 
-staging_path = connection["staging_path"].format(catalog=catalog)
-schema_location = connection["schema_location"].format(catalog=catalog)
+# Construct full paths dynamically using SOURCE_NAME + ENTITY_NAME
+base_staging_path = connection["staging_path"].format(catalog=catalog)
+base_schema_location = connection["schema_location"].format(catalog=catalog)
+
+staging_path = f"{base_staging_path}/{SOURCE_NAME}/{ENTITY_NAME}/"
+schema_location = f"{base_schema_location}/{SOURCE_NAME}_{ENTITY_NAME}_bronze/"
 
 
 @dp.table(

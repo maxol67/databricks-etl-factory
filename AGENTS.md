@@ -8,9 +8,11 @@ This project uses Declarative Automation Bundles (DABs) for deployment.
 Lakeflow (Declarative) Pipelines work and `databricks-dabs` for bundle config. Without them,
 results are often slower and less accurate.
 
-If these skills are not available (Databricks AI Tools are not installed), install them:
+> **Note:** When working in the Databricks workspace (browser), these skills are built-in and
+> available automatically. The installation command below is only for local AI tools:
 
 ```bash
+# Local development only (not needed in Databricks workspace)
 databricks aitools install
 ```
 
@@ -36,7 +38,7 @@ gitignored, personal) for the deep design rationale behind each convention.
   files. Real/client-specific work belongs in a separate private repo - same boundary drawn by
   other project repos in this series.
 - Current state: six hardcoded sources (SAP, a webshop, a CRM,
-  Finance's credit-scoring system, MDM's product master data, Product Management's reference
+  Finance's two systems (credit-scoring and ABC classification), MDM's product master data, Product Management's reference
   pricing) as twelve Lakeflow Pipelines in two tiers plus twelve Lakeflow Jobs (automatic
   `trigger_*` roles vs. on-demand-only `refresh_*_full` roles) - see
   `README.md`'s Current status section for the full, up-to-date structure before assuming a
