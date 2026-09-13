@@ -378,15 +378,24 @@ opens `config/source_environment.yml` directly
 runtime through the editable install. See `sap_orders.py` for the pattern - every Bronze
 transformation file follows it.
 
-**Why plain YAML, not a database**: the two files intentionally forgo what a relational control
-table would give for free - foreign-key referential integrity, dynamic active/inactive
-queryability via views/procs, an audit trail beyond git history, and concurrent-writer safety.
-None of these are scale limitations at this project's size; they're what a database gives a
-*person* maintaining config by hand, to mechanically catch what no single human reliably keeps
-consistent across every edit. `tests/test_config.py` does that same verification instead - every
-`config/source_environment.yml` entry names a real `config/sources.yml` source and vice versa,
-every source has `dev`/`prod` coverage and a non-empty `type`/`description`, and every Bronze
-pipeline's `SOURCE_NAME` is registered and vice versa - without needing a database to be the
+**Why plain YAML, not a database**: this isn't "good enough while the project stays small, a real
+database will be needed once it grows" - the design's actual claim is that the metadata never
+becomes complex at any scale, tens or hundreds of sources and thousands of entities included (see
+`ENTITY_NAME` - already this project's term for the object/table level below `source`, e.g.
+`orders` under `sap`). A classic metadata-driven engine's control tables grow huge because they
+try to encode varying business logic and transformation rules as data; this config only ever
+describes a handful of simple, bounded connection facts per source x environment (where does it
+live, in this environment). That logic, schema, and every transformation rule stay in code -
+reviewable, testable - never in the config. Adding the 500th source or the 5,000th entity adds
+rows to the same flat structure, not new columns or new structural complexity. So what a
+relational control table would give for free - foreign-key referential integrity, dynamic
+active/inactive queryability via views/procs, an audit trail beyond git history, and
+concurrent-writer safety - stays genuinely optional regardless of count, not something this
+design expects to eventually need once it "grows up." `tests/test_config.py` does that
+referential-integrity verification instead - every `config/source_environment.yml` entry names a
+real `config/sources.yml` source and vice versa, every source has `dev`/`prod` coverage and a
+non-empty `type`/`description`, and every Bronze pipeline's `SOURCE_NAME` is registered and vice
+versa - without needing a database to be the
 enforcement mechanism. It runs automatically as part of `uv run pytest` (see Testing below), so it
 re-checks on every change, not just when someone remembers to run it by hand; git history covers
 the audit trail for a low-frequency, PR-reviewed config. This is the same bet README's "Agentic
